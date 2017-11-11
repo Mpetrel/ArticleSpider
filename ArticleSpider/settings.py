@@ -67,9 +67,10 @@ ROBOTSTXT_OBEY = False
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 # 数字越小，优先级越高
 ITEM_PIPELINES = {
-   'ArticleSpider.pipelines.JsonWithEncodingPipeline': 2,
+   #'ArticleSpider.pipelines.JsonExporterPipeline': 2,
    #'scrapy.pipelines.images.ImagesPipeline': 1,
-   'ArticleSpider.pipelines.ArticleImagePipeline': 1,
+   #'ArticleSpider.pipelines.ArticleImagePipeline': 1,
+   'ArticleSpider.pipelines.MysqlTwistedPipeline':1,
 }
 # 配置图片下载相关
 IMAGES_URLS_FIELD = "front_image_url"
@@ -101,3 +102,7 @@ IMAGES_STORE = os.path.join(project_dir, 'images')
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+MYSQL_HOST = '192.168.1.10'
+MYSQL_DBNAME = 'scrapy'
+MYSQL_USER = 'root'
+MYSQL_PASSWORD = 'root'

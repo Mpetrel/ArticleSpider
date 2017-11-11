@@ -7,7 +7,11 @@
 from scrapy.pipelines.images import ImagesPipeline
 import codecs
 import json
+import mysql.connector
 from scrapy.exporters import JsonItemExporter
+import hashlib
+from twisted.enterprise import adbapi
+
 
 class ArticlespiderPipeline(object):
     def process_item(self, item, spider):
@@ -44,10 +48,64 @@ class JsonExporterPipeline(JsonItemExporter):
         self.exporter.export_item(item)
         return item
 
+
 class ArticleImagePipeline(ImagesPipeline):
     def item_completed(self, results, item, info):
-        image_file_path = ''
-        for ok, value in results:
-            image_file_path = value['path']
-        item["front_image_path"] = image_file_path
+        if "front_image_url" in item:
+            image_file_path = ''
+            for ok, value in results:
+                image_file_path = value['path']
+            item["front_image_path"] = image_file_path
         return item
+
+
+class MysqlPipeline(object):
+    def __init__(self):
+        self.conn = mysql.connector.connect(host='192.168.1.10', port=3306, user='root', password='root',
+                                   database='scrapy', use_unicode=True)
+        self.cursor = self.conn.cursor()
+
+
+    def process_item(self, item, spider):
+        sql = """insert into article(title, url, url_object_id, create_date, fav_nums)
+        values(%s, %s, %s, %s, %s)"""
+        self.cursor.execute(sql, (item['title'], item['url'], item['url_object_id'], item['create_date'],
+                                  item['fav_nums']))
+        self.conn.commit()
+        return item
+
+
+class MysqlTwistedPipeline(object):
+
+    def __init__(self, dbpool):
+        self.dbpool = dbpool
+
+    @classmethod
+    def from_settings(cls, settings):
+        dbparm = dict(
+            host = settings["MYSQL_HOST"],
+            db = settings["MYSQL_DBNAME"],
+            user = settings["MYSQL_USER"],
+            password = settings["MYSQL_PASSWORD"],
+            charset = "utf8",
+           # cursorclass = mysql.connector.cursor.MySQLCursor,
+            use_unicode = True
+        )
+        dbpool = adbapi.ConnectionPool("mysql.connector", **dbparm)
+        return cls(dbpool)
+
+
+    def process_item(self, item, spider):
+        query = self.dbpool.runInteraction(self.do_insert, item)
+        query.addErrback(self.handle_error)
+        return item
+
+
+    def do_insert(self, cursor, item):
+        sql = """insert into article(title, url, url_object_id, create_date, fav_nums)
+                values(%s, %s, %s, %s, %s)"""
+        cursor.execute(sql, (item['title'], item['url'], item['url_object_id'], item['create_date'],
+                                  item['fav_nums']))
+
+    def handle_error(self, failure):
+        print(failure)
