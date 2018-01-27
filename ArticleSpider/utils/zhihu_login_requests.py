@@ -51,12 +51,23 @@ def get_captcha():
     img_url = 'https://www.zhihu.com/captcha.gif?r='+t+'&type=login&lang=cn'
     response = session.get(img_url, headers = header)
     if(response.status_code == 200):
-        if not os.path.exists('../images/captcha/'):
-            os.makedirs('../images/captcha/')
-        f_captcha = open('../images/captcha/captcha.gif', 'wb')
-        f_captcha.write(response.content)
-        return zheye().Recognize(os.path.abspath('../images/captcha/captcha.gif'))
-    return None
+        with open('captcha.jpg', 'wb') as f:
+            f.write(response.content)
+            f.close()
+        temp = zheye().Recognize('captcha.jpg')
+        captchas = []
+        if len(temp) == 2:
+            if temp[0][1] > temp[1][1]:
+                captchas.append([temp[1][1], temp[1][0]])
+                captchas.append([temp[0][1], temp[0][0]])
+            else:
+                captchas.append([temp[0][1], temp[0][0]])
+                captchas.append([temp[1][1], temp[1][0]])
+        else:
+            captchas.append([temp[0][1], temp[0][0]])
+
+        return captchas
+    return []
 
 
 
@@ -84,12 +95,14 @@ def zhihu_login(account, password):
 
 
     response_text = session.post(post_url, data=post_data, headers = header)
+    print(response_text.text)
     # 查看是否登录成功,需要验证码从新识别
     if(json.loads(response_text.text))['r'] == 1:
         print('需要验证码，开始识别.....')
         post_data['captcha'] = {"img_size":[200,44],"input_points":get_captcha()}
         post_data['captcha_type'] = 'cn'
         print('验证码识别结果：%s' % (post_data['captcha']))
+        print(post_data)
         response_text = session.post(post_url, data=post_data, headers=header)
         #print((json.loads(response_text.text))['msg'])
     print(response_text.text)
@@ -105,6 +118,7 @@ def is_login():
         return False
 
 
-print(is_login())
 
-#zhihu_login("lovicey@foxmail.com", "Lovsmm520?")
+
+
+print(is_login())
